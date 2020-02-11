@@ -53,31 +53,6 @@ public class SudokuGraphics
             this.getChildren().add(border);
         }
 
-//        public GridField(int size, SudokuBoard.ValueField valueField) {
-//            this.setLayoutX(0);
-//            this.setLayoutY(0);
-//            //this.getChildren().add(new Rectangle(size,size));
-//
-//            //if (valueField.getValue() == 0) {
-//            this.possibleNumbers = new RectangleWithText[9];
-//            for (int i = 0; i < 3; i++)
-//                for (int j = 0; j < 3; j++) {
-//                    possibleNumbers[i * 3 + j] = new RectangleWithText(size / 3.0, String.valueOf(i * 3 + j + 1));
-//                    possibleNumbers[i * 3 + j].getRectangle().setStrokeWidth(0);
-//                    possibleNumbers[i * 3 + j].setLayoutX(i * size / 3.0);
-//                    possibleNumbers[i * 3 + j].setLayoutY(j * size / 3.0);
-//                }
-//            this.getChildren().addAll(possibleNumbers);
-//            //}
-//
-//            mainNumber = new RectangleWithText(size, String.valueOf(valueField.getValue()));
-//            mainNumber.setFontWeight(FontWeight.BOLD);
-//            mainNumber.getText().setFill(Color.BLACK);
-//            mainNumber.getRectangle().setFill(Color.TRANSPARENT);
-//            this.getChildren().add(mainNumber);
-//
-//        }
-
         GridField(int size) {
             this(size, 0);
         }
@@ -94,7 +69,7 @@ public class SudokuGraphics
             mainNumber.getText().setFill(paint);
         }
 
-        public void Update(int mainNumber, boolean possibleNumbers[], boolean showPossibleNumbers) {
+        public void Update(int mainNumber, boolean possibleNumbers[], boolean showPossibleNumbers, boolean isSelected) {
             if (mainNumber > -1) {
                 setMainNumber(mainNumber);
                 setVisibility(0, mainNumber > 0);
@@ -107,6 +82,15 @@ public class SudokuGraphics
                 else
                     setVisibility(i, false);
             }
+            if (isSelected) {
+                this.setBorderStyle(Color.BLUE, 1);
+            } else {
+                this.setBorderStyle(Color.GREY, 0.5);
+            }
+        }
+
+        public void Update(int mainNumber, boolean possibleNumbers[], boolean showPossibleNumbers) {
+            Update(mainNumber, possibleNumbers, showPossibleNumbers, false);
         }
 
         public void Update(int mainNumber, boolean possibleNumbers[]) {
@@ -116,6 +100,11 @@ public class SudokuGraphics
         public void Update(boolean showPossibleNumbers) {
             for (int i = 1; i < 10; i++)
                 setVisibility(i, false);
+        }
+
+        public void setBorderStyle(Paint color, double strokeWidth) {
+            this.border.setStroke(color);
+            this.border.setStrokeWidth(strokeWidth);
         }
 
     }
@@ -148,7 +137,6 @@ public class SudokuGraphics
             this.getChildren().add(gridField);
         }
 
-
         for (int i = 0; i < 3; i++)
             for (int j = 0; j < 3; j++) {
                 groupRectangle = new Rectangle(i * blockSize * 3, j * blockSize * 3, blockSize * 3, blockSize * 3);
@@ -175,8 +163,8 @@ public class SudokuGraphics
         }
     }
 
-    public void Update(int row, int column, int mainValue, boolean possibleNumbers[], boolean showPossibleNumbers) {
-        ((GridField) this.getChildren().get(row * 9 + column)).Update(mainValue, possibleNumbers, showPossibleNumbers);
+    public void Update(int row, int column, int mainValue, boolean possibleNumbers[], boolean showPossibleNumbers, boolean isSelected) {
+        ((GridField) this.getChildren().get(row * 9 + column)).Update(mainValue, possibleNumbers, showPossibleNumbers, isSelected);
     }
 
     public void Update(SudokuBoard mainBoard, boolean showPossibleNumbers) {
@@ -184,7 +172,16 @@ public class SudokuGraphics
         for (int i = 0; i < 9; i++)
             for (int j = 0; j < 9; j++) {
                 gridValue = mainBoard.getItemAt(i, j);
-                Update(i, j, gridValue.getValue(), gridValue.getPossibleNumbers(), showPossibleNumbers);
+                Update(i, j, gridValue.getValue(), gridValue.getPossibleNumbers(), showPossibleNumbers, false);
+            }
+    }
+
+    public void Update(SudokuBoard mainBoard, boolean showPossibleNumbers, boolean userDefinedPuzzle) {
+        SudokuBoard.GridValue gridValue;
+        for (int i = 0; i < 9; i++)
+            for (int j = 0; j < 9; j++) {
+                gridValue = mainBoard.getItemAt(i, j);
+                Update(i, j, gridValue.getValue(), gridValue.getPossibleNumbers(), showPossibleNumbers, userDefinedPuzzle && gridValue.getIsSelected());
             }
     }
 
@@ -203,5 +200,4 @@ public class SudokuGraphics
     public void setNumberColor(int row, int column, Paint color) {
         ((GridField) this.getChildren().get(row * 9 + column)).setMainNumberColor(color);
     }
-
 }

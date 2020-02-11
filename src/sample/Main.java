@@ -5,16 +5,22 @@ import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
-import javafx.concurrent.WorkerStateEvent;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Point2D;
+import javafx.print.*;
 import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.SnapshotParameters;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.transform.Scale;
+import javafx.scene.transform.Translate;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import javafx.util.StringConverter;
@@ -40,12 +46,14 @@ public class Main extends Application
     private Button butSolve;
     private Button butValidateSolution;
     private Button butReset;
+    private Button butPrint;
     private ComboBox<Pair<Integer, String>> cbxDifficulty;
     private Label lblMain;
     private Label lblDifficulty;
     private int selectedGridID;
     private int controlsCount;
     private Group root;
+    private PrinterJob printerJob;
 
     private ObservableList<Pair<Integer, String>> listDifficulties;
     //To implement
@@ -91,12 +99,15 @@ public class Main extends Application
     }
 
     private void initScene(Group root) {
+        double xControlOffset;
+        double maxControlWidth = 0.0;
         listDifficulties = FXCollections.observableArrayList();
         listDifficulties.addAll(
                 new Pair<>(50, "Easy (50 clues)"),
                 new Pair<>(40, "Medium (40 clues)"),
                 new Pair<>(30, "Hard (30 clues)"),
-                new Pair<>(20, "Extreme (20 clues)")
+                new Pair<>(20, "Extreme (20 clues)"),
+                new Pair<>(0, "User defined (min of 17 clues)")
         );
 
 
@@ -106,19 +117,11 @@ public class Main extends Application
         background.setLayoutY(0);
         root.getChildren().add(background);
 
-        butGenerate = new Button("Generate new Sudoku");
-        butGenerate.setLayoutX(10);
-        butGenerate.setLayoutY(10);
-        root.getChildren().add(butGenerate);
-
-        butReset = new Button("Reset");
-        butReset.setLayoutX(200);
-        butReset.setLayoutY(10);
-        root.getChildren().add(butReset);
+        xControlOffset = 10;
 
         lblDifficulty = new Label();
-        lblDifficulty.setLayoutX(10);
-        lblDifficulty.setLayoutY(40);
+        lblDifficulty.setLayoutX(xControlOffset);
+        lblDifficulty.setLayoutY(10);
         lblDifficulty.setText("Difficulty");
         root.getChildren().add(lblDifficulty);
 
@@ -138,34 +141,69 @@ public class Main extends Application
         });
 
         cbxDifficulty.getSelectionModel().select(0);
-        cbxDifficulty.setLayoutX(10);
-        cbxDifficulty.setLayoutY(60);
+        cbxDifficulty.setLayoutX(xControlOffset);
+        cbxDifficulty.setLayoutY(30);
         root.getChildren().add(cbxDifficulty);
+        // cbxDifficulty.layout();
+
+        butGenerate = new Button("Generate new Sudoku");
+        butGenerate.setLayoutX(xControlOffset);
+        butGenerate.setLayoutY(60);
+        butGenerate.setPrefWidth(150);
+        //butGenerate.
+        root.getChildren().add(butGenerate);
+
+        butReset = new Button("Reset");
+        butReset.setLayoutX(170);
+        butReset.setLayoutY(60);
+        root.getChildren().add(butReset);
+
+        root.applyCss();
+        root.layout();
+        maxControlWidth = Math.max(Math.max(cbxDifficulty.getWidth(), butGenerate.getWidth()), butReset.getWidth());
+        xControlOffset += nextInt(maxControlWidth + 50, 5);
 
         chbShowPossibleNumbers = new CheckBox("Show possible numbers");
-        chbShowPossibleNumbers.setLayoutX(10);
-        chbShowPossibleNumbers.setLayoutY(100);
+        chbShowPossibleNumbers.setLayoutX(xControlOffset);
+        chbShowPossibleNumbers.setLayoutY(25);
         root.getChildren().add(chbShowPossibleNumbers);
 
-        butValidateSolution = new Button("Validate solution");
-        butValidateSolution.setLayoutX(10);
-        butValidateSolution.setLayoutY(140);
-        root.getChildren().add(butValidateSolution);
-
         chbShowInvalidFields = new CheckBox("Show invalid fields");
-        chbShowInvalidFields.setLayoutX(10);
-        chbShowInvalidFields.setLayoutY(170);
+        chbShowInvalidFields.setLayoutX(xControlOffset);
+        chbShowInvalidFields.setLayoutY(45);
         root.getChildren().add(chbShowInvalidFields);
 
+        chbShowAnimation = new CheckBox("Show solving animation");
+        chbShowAnimation.setLayoutX(xControlOffset);
+        chbShowAnimation.setLayoutY(65);
+        root.getChildren().add(chbShowAnimation);
+
+        root.applyCss();
+        root.layout();
+        maxControlWidth = Math.max(Math.max(chbShowPossibleNumbers.getWidth(), chbShowInvalidFields.getWidth()), chbShowAnimation.getWidth());
+        xControlOffset += nextInt(maxControlWidth + 50, 5);
+
         butSolve = new Button("Solve Sudoku");
-        butSolve.setLayoutX(10);
-        butSolve.setLayoutY(210);
+        butSolve.setLayoutX(xControlOffset);
+        butSolve.setLayoutY(25);
         root.getChildren().add(butSolve);
 
-        chbShowAnimation = new CheckBox("Show solving animation");
-        chbShowAnimation.setLayoutX(10);
-        chbShowAnimation.setLayoutY(240);
-        root.getChildren().add(chbShowAnimation);
+        butValidateSolution = new Button("Validate solution");
+        butValidateSolution.setLayoutX(xControlOffset);
+        butValidateSolution.setLayoutY(60);
+        root.getChildren().add(butValidateSolution);
+
+        root.applyCss();
+        root.layout();
+        maxControlWidth = Math.max(butSolve.getWidth(), butValidateSolution.getWidth());
+        xControlOffset += nextInt(maxControlWidth + 50, 5);
+
+        butPrint = new Button("Print");
+        butPrint.setLayoutX(xControlOffset);
+        butPrint.setLayoutY(25);
+        butPrint.setPrefHeight(60);
+        butPrint.setPrefWidth(60);
+        root.getChildren().add(butPrint);
 
         controlsCount = root.getChildren().size();
     }
@@ -199,11 +237,11 @@ public class Main extends Application
     private void initGame(Group root) {
         MainBoard = SudokuBoard.TestCase();
         GameGraphics = new SudokuGraphics();
-        GameGraphics.setLayoutX(WIDTH / 4);
-        GameGraphics.setLayoutY(HEIGHT / 10);
+        GameGraphics.setLayoutX(WIDTH / 12);
+        GameGraphics.setLayoutY(100);
 
         GameEngine = new SudokuEngine(MainBoard, GameGraphics);
-        GameEngine.InitializeGraphics(Math.min(WIDTH, HEIGHT) / 13);
+        GameEngine.InitializeGraphics(WIDTH / 11);
         GameEngine.Update();//to show only needed data
         root.getChildren().add(GameEngine.getGraphics());
     }
@@ -228,9 +266,9 @@ public class Main extends Application
         });
 
         //TODO:Improve on this method, without throwing exceptions
-        butValidateSolution.setOnMouseClicked(new EventHandler<MouseEvent>() {
+        butValidateSolution.setOnAction(new EventHandler<ActionEvent>() {
             @Override
-            public void handle(MouseEvent event) {
+            public void handle(ActionEvent event) {
                 Alert messageBox = new Alert(Alert.AlertType.INFORMATION);
                 messageBox.setTitle("Solution validation");
                 try {
@@ -248,18 +286,15 @@ public class Main extends Application
             }
         });
 
-        butSolve.setOnMouseClicked(new EventHandler<MouseEvent>() {
+        butSolve.setOnAction(new EventHandler<ActionEvent>() {
             @Override
-            public void handle(MouseEvent event) {
+            public void handle(ActionEvent event) {
                 Task<Void> taskSolveInBackground = new Task<Void>() {
                     @Override
                     protected Void call() throws Exception {
                         try {
                             GameEngine.Solve(chbShowAnimation.isSelected());
 
-                            //GameEngine.Update();
-                            //EnableControls();
-                            //butValidateSolution.fire();
                         } catch (Exception ex) {
                             Exception ee = new Exception();
                             ee.addSuppressed(ex);
@@ -274,7 +309,6 @@ public class Main extends Application
                             EnableControls();
                             butValidateSolution.fire();
                         }
-
                 );
                 DisableControls();
                 new Thread(taskSolveInBackground).start();
@@ -282,18 +316,70 @@ public class Main extends Application
 
         });
 
-        butReset.setOnMouseClicked(new EventHandler<MouseEvent>() {
+        butReset.setOnAction(new EventHandler<ActionEvent>() {
             @Override
-            public void handle(MouseEvent event) {
+            public void handle(ActionEvent event) {
                 GameEngine.Reset();
             }
         });
 
-        butGenerate.setOnMouseClicked(new EventHandler<MouseEvent>() {
+        butPrint.setOnAction(new EventHandler<ActionEvent>() {
             @Override
-            public void handle(MouseEvent event) {
+            public void handle(ActionEvent event) {
+                root.applyCss();
+                root.layout();
+
+                printerJob = PrinterJob.createPrinterJob();
+                if (printerJob != null && printerJob.showPrintDialog(GameGraphics.getScene().getWindow())) {
+                    Printer printer = printerJob.getPrinter();
+                    System.out.println(printer.toString());
+                    PageLayout pageLayout = printerJob.getJobSettings().getPageLayout();
+                    System.out.println(pageLayout.toString());
+                    //pageLayout = printer.createPageLayout(Paper.A4, PageOrientation.PORTRAIT, Printer.MarginType.HARDWARE_MINIMUM);
+                    //System.out.println(pageLayout.toString());
+                    //pageLayout.get
+                    double minScale = Math.min(
+                            pageLayout.getPrintableWidth() / GameGraphics.getBoundsInParent().getWidth(),
+                            pageLayout.getPrintableHeight() / GameGraphics.getBoundsInParent().getHeight()
+                    );
+
+                    Scale scale = new Scale(minScale, minScale);
+                    Translate translate = new Translate(
+                            -GameGraphics.getLayoutX(),
+                            -GameGraphics.getLayoutY());
+
+                    GameGraphics.getTransforms().add(translate);
+                    GameGraphics.getTransforms().add(scale);
+
+                    //GameGraphics.applyCss();
+                    //GameGraphics.layout();
+                    if (printerJob.printPage(GameGraphics))
+                        printerJob.endJob();
+
+                    GameGraphics.getTransforms().remove(scale);
+                    GameGraphics.getTransforms().remove(translate);
+
+                }
+            }
+        });
+
+        butGenerate.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                if (cbxDifficulty.getValue().getKey() == 0) {
+                    if (butGenerate.getText().equals("Generate new Sudoku")) {
+                        butGenerate.setText("Finish");
+                        GameEngine.setUserDefinedPuzzleMode(true);
+                        butGenerate.setDisable(true);
+                    } else {
+                        butGenerate.setText("Generate new Sudoku");
+                        GameEngine.setUserDefinedPuzzleMode(false);
+                    }
+                }
+                //} else {
                 GameEngine.Generate(cbxDifficulty.getValue().getKey(), System.nanoTime());
                 GameEngine.Update();
+
             }
         });
     }
@@ -306,6 +392,12 @@ public class Main extends Application
         if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED && mouseEvent.getButton() == MouseButton.SECONDARY && sender instanceof SudokuGraphics.GridField) {
             selectedGridID = Integer.valueOf(((SudokuGraphics.GridField) mouseEvent.getSource()).getId());
             contextMenu.show(background, mouseEvent.getScreenX(), mouseEvent.getSceneY());
+        }
+        if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED && mouseEvent.getButton() == MouseButton.PRIMARY && sender instanceof SudokuGraphics.GridField) {
+            selectedGridID = Integer.valueOf(((SudokuGraphics.GridField) mouseEvent.getSource()).getId());
+            GameEngine.markField(selectedGridID / 9, selectedGridID % 9);
+            GameEngine.Update();
+            butGenerate.setDisable(GameEngine.getSelectedFieldsCount() < 17);
         }
         mouseEvent.consume();
     }
@@ -326,4 +418,7 @@ public class Main extends Application
             root.getChildren().get(i).setDisable(false);
     }
 
+    private int nextInt(double number, int divider) {
+        return (((int) (number + divider)) / divider) * divider;
+    }
 }

@@ -7,6 +7,8 @@ public class SudokuBoard {
         private boolean isClue;
         private boolean[] possibleNumbers;
         private int possibleNumbersCount;
+        private boolean isSelected;
+
 
         public GridValue(int value, boolean isClue) {
             this.value = value;
@@ -65,6 +67,14 @@ public class SudokuBoard {
             possibleNumbersCount = 0;
             for (int i = 1; i < this.possibleNumbers.length; i++)
                 possibleNumbersCount += this.possibleNumbers[i] ? 1 : 0;
+        }
+
+        public boolean getIsSelected() {
+            return isSelected;
+        }
+
+        public void setIsSelected(boolean isSelected) {
+            this.isSelected = isSelected;
         }
     }//END OF Field CLASS
 
@@ -146,6 +156,18 @@ public class SudokuBoard {
 
     public boolean isClue(int row, int column) {
         return this.getItemAt(row, column).isClue;
+    }
+
+    public void setSelected(int row, int column, boolean isSelected) {
+        this.getItemAt(row, column).setIsSelected(isSelected);
+    }
+
+    public boolean getSelected(int row, int column) {
+        return this.getItemAt(row, column).getIsSelected();
+    }
+
+    public void flipSelected(int row, int column) {
+        this.getItemAt(row, column).setIsSelected(!this.getItemAt(row, column).getIsSelected());
     }
 
     public void setValueAt(int row, int column, int value)

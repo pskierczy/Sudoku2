@@ -4,6 +4,7 @@ import javafx.application.Platform;
 import javafx.event.EventHandler;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
+import sun.font.DelegatingShape;
 
 import java.beans.ExceptionListener;
 import java.io.Console;
@@ -14,6 +15,8 @@ public class SudokuEngine {
     private SudokuGraphics Graphics;
     private boolean showPossibleNumbers;
     private boolean showInvalidFields;
+    private boolean userDefinedPuzzleMode;
+    private int selectedFieldsCount;
 
     private boolean isDebug = false;
 
@@ -23,7 +26,20 @@ public class SudokuEngine {
         this.showInvalidFields = false;
         this.showInvalidFields = false;
         ComputePossibleNumbers();
+    }
 
+    public boolean isUserDefinedPuzzleMode() {
+        return userDefinedPuzzleMode;
+    }
+
+    public void setUserDefinedPuzzleMode(boolean userDefinedPuzzleMode) {
+        this.userDefinedPuzzleMode = userDefinedPuzzleMode;
+        if (userDefinedPuzzleMode)
+            this.selectedFieldsCount = 0;
+    }
+
+    public int getSelectedFieldsCount() {
+        return selectedFieldsCount;
     }
 
     private void setDebug(boolean debug) {
@@ -38,6 +54,7 @@ public class SudokuEngine {
         this.showInvalidFields = showInvalidFields;
         setDebug(showInvalidFields);
     }
+
 
     public SudokuBoard getBoard() {
         return Board;
@@ -64,24 +81,39 @@ public class SudokuEngine {
     }
 
     public void UpdateGraphics() {
-        Graphics.Update(Board, showPossibleNumbers);
+        //if (userDefinedPuzzleMode)
+        Graphics.Update(Board, showPossibleNumbers, userDefinedPuzzleMode);
+//        else
+//            Graphics.Update(Board, showPossibleNumbers);
     }
 
 
     public void UpdateGraphics(int row, int column, int mainNumber, boolean possibleNumbers[]) {
-        Graphics.Update(row, column, mainNumber, possibleNumbers, showPossibleNumbers);
+        Graphics.Update(row, column, mainNumber, possibleNumbers, showPossibleNumbers, false);
     }
 
     public void Update() {
         try {
-            ComputePossibleNumbers();
-            UpdateGraphics();
-            ValidateFields();
+            if (userDefinedPuzzleMode)
+                UpdateGraphics();
+            else {
+                ComputePossibleNumbers();
+                UpdateGraphics();
+                ValidateFields();
+            }
         } catch (Exception ex) {
             Exception e = new Exception();
             e.addSuppressed(ex);
             e.printStackTrace();
         }
+    }
+
+    public void markField(int row, int column) {
+        this.Board.flipSelected(row, column);
+        if (this.Board.getSelected(row, column))
+            selectedFieldsCount++;
+        else
+            selectedFieldsCount--;
     }
 
     public void Update(int row, int column, int mainNumber) throws Exception {
@@ -300,34 +332,91 @@ public class SudokuEngine {
         int row, column, id;
 
         try {
-            for (int i = 0; i < 81; i++)
-                cluesList.add(i);
-            Collections.shuffle(cluesList, random);
+            if (difficulty == 0 && userDefinedPuzzleMode) {
+                Board = SudokuBoard.InitWithZero(9);
+            } else {
+                if (difficulty == 0 && !userDefinedPuzzleMode) {
+                    for (int i = 0; i < 9; i++)
+                        for (int j = 0; j < 9; j++) {
+                            if (this.getBoard().getSelected(i, j))
+                                cluesList.add(i * 9 + j);
+                        }
+                    difficulty = this.getSelectedFieldsCount();
+                } else {
+                    for (int i = 0; i < 81; i++)
+                        cluesList.add(i);
+                    Collections.shuffle(cluesList, random);
+                }
 
+                int newBoard[][] = new int[9][9];
+                for (int k = 0; k < 9; k = k + 3) {
+                    Collections.shuffle(numbers, random);
+                    for (int i = 0; i < 3; i++)
+                        for (int j = 0; j < 3; j++)
+                            newBoard[k + i][k + j] = numbers.get(i + j * 3);
+                }
+                Board = new SudokuBoard(newBoard);
 
-            //Board = SudokuBoard.InitWithZero();
+                this.Solve();
 
-            int newBoard[][] = new int[9][9];
-            for (int k = 0; k < 9; k = k + 3) {
-                Collections.shuffle(numbers, random);
-                for (int i = 0; i < 3; i++)
-                    for (int j = 0; j < 3; j++)
-                        newBoard[k + i][k + j] = numbers.get(i + j * 3);
+                newBoard = new int[9][9];
+                for (int i = 0; i < difficulty; i++) {
+                    id = cluesList.get(i);
+                    row = id / 9;
+                    column = id % 9;
+                    newBoard[row][column] = this.getBoard().getValueAt(row, column);
+                }
+
+                Board = new SudokuBoard(newBoard);
             }
-            Board = new SudokuBoard(newBoard);
+        } catch (
+                Exception ex) {
+            ex.printStackTrace();
+        }
 
-            this.Solve();
+    }
+
+    public void Generate_backupCopy11022020(int difficulty, long seed, boolean userDefinedMode) {
+        Random random = new Random(seed);
+        List<Integer> numbers = new ArrayList<>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9));
+        List<Integer> cluesList = new ArrayList<>();
+        int row, column, id;
+
+        try {
+            if (difficulty == 0) {
+                if (userDefinedMode == true) {
+                    Board = SudokuBoard.InitWithZero(9);
+                    setUserDefinedPuzzleMode(true);
+                } else {
+                    setUserDefinedPuzzleMode(true);
+                }
+            } else {
+                for (int i = 0; i < 81; i++)
+                    cluesList.add(i);
+                Collections.shuffle(cluesList, random);
+
+                int newBoard[][] = new int[9][9];
+                for (int k = 0; k < 9; k = k + 3) {
+                    Collections.shuffle(numbers, random);
+                    for (int i = 0; i < 3; i++)
+                        for (int j = 0; j < 3; j++)
+                            newBoard[k + i][k + j] = numbers.get(i + j * 3);
+                }
+                Board = new SudokuBoard(newBoard);
+
+                this.Solve();
+
+                newBoard = new int[9][9];
+                for (int i = 0; i < difficulty; i++) {
+                    id = cluesList.get(i);
+                    row = id / 9;
+                    column = id % 9;
+                    newBoard[row][column] = this.getBoard().getValueAt(row, column);
+                }
 
 
-            newBoard = new int[9][9];
-            for (int i = 0; i < difficulty; i++) {
-                id = cluesList.get(i);
-                row = id / 9;
-                column = id % 9;
-                newBoard[row][column] = this.getBoard().getValueAt(row, column);
+                Board = new SudokuBoard(newBoard);
             }
-
-            Board = new SudokuBoard(newBoard);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
