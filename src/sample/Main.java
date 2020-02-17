@@ -6,6 +6,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
+import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.print.*;
@@ -54,6 +55,7 @@ public class Main extends Application
     private int controlsCount;
     private Group root;
     private PrinterJob printerJob;
+    private SudokuNumpad sudokuNumpad;
 
     private ObservableList<Pair<Integer, String>> listDifficulties;
     //To implement
@@ -94,7 +96,9 @@ public class Main extends Application
         controlsCount = 0;
         initScene(root);
         initGame(root);
+        sudokuNumpad = new SudokuNumpad(root);
         initHandlers();
+
 
     }
 
@@ -382,24 +386,72 @@ public class Main extends Application
 
             }
         });
+
+        this.sudokuNumpad.setOnClosing(new EventHandler<SudokuNumpad.ClosingEvent>() {
+            @Override
+            public void handle(SudokuNumpad.ClosingEvent event) {
+                try {
+                    GameEngine.Update(selectedGridID / 9, selectedGridID % 9, event.getNumber());
+                } catch (Exception ex) {
+                    Alert messageBox = new Alert(Alert.AlertType.ERROR);
+                    messageBox.setTitle("ERROR");
+                    messageBox.setContentText(ex.getMessage());
+                    messageBox.show();
+                }
+
+            }
+        });
     }
+    ///END OF HANDLERS INITIALIZATION
 
     private void MouseEventHandler(MouseEvent mouseEvent, Object sender) {
-        if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED) {
-            contextMenu.hide();
-        }
 
-        if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED && mouseEvent.getButton() == MouseButton.SECONDARY && sender instanceof SudokuGraphics.GridField) {
-            selectedGridID = Integer.valueOf(((SudokuGraphics.GridField) mouseEvent.getSource()).getId());
-            contextMenu.show(background, mouseEvent.getScreenX(), mouseEvent.getSceneY());
-        }
-        if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED && mouseEvent.getButton() == MouseButton.PRIMARY && sender instanceof SudokuGraphics.GridField) {
-            selectedGridID = Integer.valueOf(((SudokuGraphics.GridField) mouseEvent.getSource()).getId());
-            GameEngine.markField(selectedGridID / 9, selectedGridID % 9);
-            GameEngine.Update();
-            butGenerate.setDisable(GameEngine.getSelectedFieldsCount() < 17);
+        if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED) {
+            if (sudokuNumpad.isShown()) {
+                sudokuNumpad.hide();
+                mouseEvent.consume();
+                //return;
+            }
+            if (mouseEvent.getButton() == MouseButton.PRIMARY) {
+                if (sender instanceof SudokuGraphics.GridField) {
+                    SudokuGraphics.GridField gridField = (SudokuGraphics.GridField) mouseEvent.getSource();
+                    selectedGridID = Integer.valueOf(gridField.getId());
+
+                    if (GameEngine.isUserDefinedPuzzleMode()) {
+                        GameEngine.markField(selectedGridID / 9, selectedGridID % 9);
+                        GameEngine.Update();
+                        butGenerate.setDisable(GameEngine.getSelectedFieldsCount() < 17 || GameEngine.getSelectedFieldsCount() > 80);
+                    } else {
+                        if (!GameEngine.getBoard().isClue(selectedGridID / 9, selectedGridID % 9))
+                            sudokuNumpad.show(mouseEvent.getSceneX(), mouseEvent.getSceneY());
+                    }
+                } else if (contextMenu.isShowing())
+                    contextMenu.hide();
+            }
         }
         mouseEvent.consume();
+
+//        if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED && contextMenu.isShowing()) {
+//            contextMenu.hide();
+//            mouseEvent.consume();
+//            return;
+//        }
+//
+//        if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED && mouseEvent.getButton() == MouseButton.SECONDARY && sender instanceof SudokuGraphics.GridField) {
+//            selectedGridID = Integer.valueOf(((SudokuGraphics.GridField) mouseEvent.getSource()).getId());
+//            contextMenu.show(background, mouseEvent.getScreenX(), mouseEvent.getSceneY());
+//        }
+//        if (mouseEvent.getEventType() == MouseEvent.MOUSE_CLICKED && mouseEvent.getButton() == MouseButton.PRIMARY && sender instanceof SudokuGraphics.GridField) {
+//            if (GameEngine.isUserDefinedPuzzleMode()) {
+//                selectedGridID = Integer.valueOf(((SudokuGraphics.GridField) mouseEvent.getSource()).getId());
+//                GameEngine.markField(selectedGridID / 9, selectedGridID % 9);
+//                GameEngine.Update();
+//                butGenerate.setDisable(GameEngine.getSelectedFieldsCount() < 17);
+//            } else {
+//                //sudokuNumpad.setShowPosition(mouseEvent.getScreenX(), mouseEvent.getScreenY());
+//                sudokuNumpad.show(mouseEvent.getSceneX(), mouseEvent.getSceneY());
+//            }
+        // mouseEvent.consume();
     }
 
     @Override
